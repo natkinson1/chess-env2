@@ -1,12 +1,16 @@
 #include <cstdio>
 #include <iostream>
 #include <string.h>
+#include <unordered_map>
 #include <vector>
-#ifdef WIN64
-    #include <windows.h>
-#else
-    #include <sys/time.h>
-#endif
+#include <intrin.h>
+#include <pybind11/pybind11.h>
+#include <pybind11/stl.h>
+#include <pybind11/complex.h>
+#include <pybind11/functional.h>
+#include <pybind11/numpy.h>
+
+namespace py = pybind11;
 
 #define U64 unsigned long long
 #define get_bit(bitboard, square) ((bitboard) & (1ULL << (square)))
@@ -49,8 +53,9 @@ static inline int count_bits(U64 bitboard) {
 // get least significant first bit index
 static inline int get_ls1b_index(U64 bitboard) {
     if (bitboard) {
-        return __builtin_ctzll(bitboard);
-        // return count_bits((bitboard & -bitboard) - 1);
+        // return ctzll(bitboard);
+        // return __builtin_ctzll(bitboard);
+        return count_bits((bitboard & -bitboard) - 1);
     } else {
         return -1;
     }
@@ -158,6 +163,9 @@ int side = -1;
 int enpassant = no_sq;
 int castle;
 int no_progress_count = 0;
+int current_state_pos = 0;
+int total_move_count = 0;
+std::unordered_map<U64, int> repetition_count;
 
 const U64 not_a_file = 18374403900871474942ULL;
 const U64 not_h_file = 9187201950435737471ULL;
@@ -1012,8 +1020,6 @@ static inline int make_move(int move, int move_flag) {
     return 0;
 }
 
-
-
 static inline void generate_moves(moves *move_list) {
 
     move_list->count = 0;
@@ -1314,21 +1320,107 @@ void print_move_list(moves *move_list) {
     }
 }
 
-std::vector<std::vector<int>> state[119][64];
+U64 hash_game_state() {
+    U64 hash = 0xcbf29ce484222325;
+    for (int piece = P; piece <= k; piece++) {
+        hash ^= bitboards[piece] * 0x9e3779b97f4a7c15ULL;
+    }
+    if (side == white) {
+        hash ^= 0xa5a5a5a5a5a5a5a5ULL;
+    }
+    if (enpassant != no_sq) {
+        hash ^= 1ULL << (enpassant % 64);
+    }
+    hash ^= castle * 0xf0f0f0f0f0f0f0f0ULL;
+
+    return hash;
+}
+
+void update_repition_count(U64 board_hash) {
+    repetition_count[board_hash]++;
+};
+
+int get_repitition_count(U64 board_hash) {
+    return repetition_count[board_hash];
+}
+
+std::vector<std::vector<int>> state(119, std::vector<int>(64, 0));
 
 std::vector<std::vector<int>> encode_board() {
-    std::vector<std::vector<int>> new_state(12, std::vector<int>(64, 0));
+    std::vector<std::vector<int>> new_state(7, std::vector<int>(64, 0));
 
-    for (int piece = P; piece <= k; piece++) {
+    U64 board_hash = hash_game_state();
+    update_repition_count(board_hash);
+
+
+    int start_piece = (side == white) ? P : p;
+    int end_piece = (side == white) ? K : k;
+    
+
+    for (int piece = start_piece; piece <= end_piece; piece++) {
         U64 bb = bitboards[piece];
         while (bb) {
-            int sq = __builtin_ctzll(bb);
+            // int sq = __builtin_ctzll(bb);
+            // int sq = ctzll(bb);
+            int sq = get_ls1b_index(bb);
             new_state[piece][sq] = 1;
             bb &= bb - 1;
         }
     }
+    int repitition_count = get_repitition_count(board_hash);
+    new_state[6] = std::vector<int>(64, repitition_count);
 
     return new_state;
+}
+
+void update_state() {
+    std::vector<std::vector<int>> new_state = encode_board();
+    
+    // Write directly to circular buffer position
+    int write_plane = current_state_pos * 7;
+    for (int i = 0; i < 7; i++) {
+        state[write_plane + i] = new_state[i];
+    }
+    
+    // Advance position
+    current_state_pos = (current_state_pos + 1) % 16;
+}
+
+std::vector<std::vector<int>> get_ordered_state() {
+    std::vector<std::vector<int>> ordered(119, std::vector<int>(64, 0));
+    
+    for (int t = 0; t < 16; t++) {
+        // Calculate which time step to read
+        // current_pos points to where NEXT write will go
+        // So current_pos - 1 is the newest data
+        int read_pos = (current_state_pos - 1 - t + 16) % 16;
+        
+        int src_plane = read_pos * 7;
+        int dst_plane = t * 7;
+        
+        // Copy 7 planes for this time step
+        for (int i = 0; i < 7; i++) {
+            ordered[dst_plane + i] = state[src_plane + i];
+        }
+    }
+    (side == white) ? ordered[112] = std::vector<int>(64, white) : ordered[112] = std::vector<int>(64, black);
+    ordered[113] = std::vector<int>(64, total_move_count);
+    (castle & wk) ? ordered[114] = std::vector<int>(64, 1) : ordered[114] = std::vector<int>(64, 0);
+    (castle & wq) ? ordered[115] = std::vector<int>(64, 1) : ordered[115] = std::vector<int>(64, 0);
+    (castle & bk) ? ordered[116] = std::vector<int>(64, 1) : ordered[116] = std::vector<int>(64, 0);
+    (castle & bq) ? ordered[117] = std::vector<int>(64, 1) : ordered[117] = std::vector<int>(64, 0);
+    ordered[118] = std::vector<int>(64, no_progress_count);
+    
+    return ordered;
+}
+
+std::vector<std::vector<int>> reset() {
+    state = std::vector<std::vector<int>>(119, std::vector<int>(64, 0));
+    parse_fen(start_position);
+    update_state(); //white position
+    update_state(); // black position
+    std::vector<std::vector<int>> output_state = get_ordered_state();
+    return output_state;
 }
 
 void init_all() {
@@ -1336,16 +1428,6 @@ void init_all() {
     init_sliders_attacks(bishop);
     init_sliders_attacks(rook);
     // init_magic_numbers();
-}
-
-int get_time_ms() {
-    #ifdef WIN64
-        return GetTickCount();
-    #else
-        struct timeval time_value;
-        gettimeofday(struct timeval *time_value, NULL);
-        return (time_val.tv_sec * 1000) + (time_val.tv_usec / 1000)
-    #endif
 }
 
 long nodes;
@@ -1385,17 +1467,20 @@ static inline void perft_driver(int depth)
     }
 }
 
+
+
 int main() {
-
-    init_all();
     
-    parse_fen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - ");
-    print_board();
+    init_all();
 
-    int start = get_time_ms();
-    perft_driver(5);
-    printf("Time to get moves: %dms\n", get_time_ms() - start);
-    printf("Nodes: %ld\n", nodes);
+    std::vector<std::vector<int>> output = reset();
+
 
     return 0;
+}
+
+PYBIND11_MODULE(chess_env, m, py::mod_gil_not_used()) {
+    m.doc() = "c++ optimised python library"; // optional module docstring
+
+    m.def("reset", &reset, "Function which resets the chess environment");
 }
