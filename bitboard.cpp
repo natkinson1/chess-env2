@@ -4,13 +4,15 @@
 #include <unordered_map>
 #include <vector>
 #include <intrin.h>
-#include <pybind11/pybind11.h>
-#include <pybind11/stl.h>
-#include <pybind11/complex.h>
-#include <pybind11/functional.h>
-#include <pybind11/numpy.h>
+#include <cmath>
+#include <tuple>
+// #include <pybind11/pybind11.h>
+// #include <pybind11/stl.h>
+// #include <pybind11/complex.h>
+// #include <pybind11/functional.h>
+// #include <pybind11/numpy.h>
 
-namespace py = pybind11;
+// namespace py = pybind11;
 
 #define U64 unsigned long long
 #define get_bit(bitboard, square) ((bitboard) & (1ULL << (square)))
@@ -1346,6 +1348,72 @@ int get_repitition_count(U64 board_hash) {
 
 std::vector<std::vector<int>> state(119, std::vector<int>(64, 0));
 
+enum { north, north_east, east, south_east, south, south_west, west, north_west,
+       knight_nw, knight_ne, knight_en, knight_es, knight_se, knight_sw, knight_ws, knight_wn };
+
+std::tuple<int, int> get_move_direction_and_distance(int source_square, int target_square) {
+    int source_row = source_square / 8;
+    int source_col = source_square % 8;
+    int target_row = target_square / 8;
+    int target_col = target_square % 8;
+
+    int row_diff = target_row - source_row;
+    int col_diff = target_col - source_col;
+
+    if (row_diff == 0 && col_diff > 0) {
+        return {east, col_diff};
+    } else if (row_diff == 0 && col_diff < 0) {
+        return {west, col_diff * -1};
+    } else if (col_diff == 0 && row_diff > 0) {
+        return {south, row_diff / 8};
+    } else if (col_diff == 0 && row_diff < 0) {
+        return {north, row_diff / -8};
+    } else if (row_diff > 0 && col_diff > 0) {
+        return {south_east, row_diff};
+    } else if (row_diff > 0 && col_diff < 0) {
+        return {south_west, row_diff};
+    } else if (row_diff < 0 && col_diff > 0) {
+        return {north_east, col_diff};
+    } else if (row_diff < 0 && col_diff < 0) {
+        return {north_west, col_diff * -1};
+    }
+    return {-1, -1};
+}
+
+int get_knight_move_direction(int source_square, int target_square) {
+    int val = std::abs(source_square - target_square);
+
+    if (val % 15 == 0) {
+        if (val < 0) {
+            return knight_sw;
+        } else {
+            return knight_ne;
+        }
+    } else if (val % 6 == 0) {
+        if (val < 0) {
+            return knight_ws;
+        } else {
+            return knight_en;
+        }
+    } else if (val % 10 == 0) {
+        if (val < 0) {
+            return knight_es;
+        } else {
+            return knight_wn;
+        }
+    } else if (val % 17 == 0) {
+        if (val < 0) {
+            return knight_se;
+        } else {
+            return knight_nw;
+        }
+    }
+    return -1;
+}
+
+enum {pp_nw, pp_n, pp_ne};
+enum {pp_knight, pp_biishop, pp_rook};
+
 std::vector<std::vector<int>> encode_board() {
     std::vector<std::vector<int>> new_state(7, std::vector<int>(64, 0));
 
@@ -1432,6 +1500,55 @@ void init_all() {
 
 long nodes;
 
+int get_legal_moves() {
+    /*
+    layer mapping
+
+    0 - 55  : queen, rook, bishop, pawn, king moves. Each layer specifies direction and distance moved
+    56 - 63 : knight moves for all 8 directions
+    64 - 72 : under promotion moves (rook, bishop, knight) for pawns for all 3 directions NW, N, NE.
+    */
+    moves move_list[1];
+    std::vector<std::vector<int>> actions(73, std::vector<int>(64, 0));
+
+    generate_moves(move_list);
+    for (int move_count = 0; move_count < move_list->count; move_count++) {
+        copy_board();
+        int move = move_list->moves[move_count];
+        if(!make_move(move, all_moves)) {
+            continue;
+        } else {
+            int source_square = get_move_source(move);
+            int target_square = get_move_target(move);
+            int piece = get_move_piece(move);
+            int promoted_piece = get_move_promoted(move);
+            int capture = get_move_capture(move);
+            int double_push = get_move_double(move);
+            int enpass = get_move_enpassant(move);
+            int castling = get_move_castling(move);
+
+            if (piece == N || piece == n) {
+                int direction = get_knight_move_direction(source_square, target_square);
+                int layer = 56 + direction;
+                actions[layer][source_square] = 1;
+            } else if (promoted_piece) {
+                auto [direction, _] = get_move_direction_and_distance(source_square, target_square);
+                int layer = 64 + (direction * 3);
+                actions[layer][source_square] = 1;
+                actions[layer + 1][source_square] = 1;
+                actions[layer + 2][source_square] = 1;
+
+            }
+            else {
+                auto [direction, distance] = get_move_direction_and_distance(source_square, target_square);
+                int layer = direction * 7 + (distance - 1);
+                actions[layer][source_square] = 1;
+            }
+        }
+        take_back();
+    }
+}
+
 static inline void perft_driver(int depth)
 {
     // reccursion escape condition
@@ -1473,14 +1590,15 @@ int main() {
     
     init_all();
 
-    std::vector<std::vector<int>> output = reset();
-
+    // std::vector<std::vector<int>> output = reset();
+    for (auto dir : { "north", "north_east", "east", "south_east", "south", "south_west", "west", "north_west"})
+        printf("%s1, %s2, %s3, %s4, %s5, %s6, %s7,\n", dir, dir, dir, dir, dir, dir, dir);
 
     return 0;
 }
 
-PYBIND11_MODULE(chess_env, m, py::mod_gil_not_used()) {
-    m.doc() = "c++ optimised python library"; // optional module docstring
+// PYBIND11_MODULE(chess_env, m, py::mod_gil_not_used()) {
+//     m.doc() = "c++ optimised python library"; // optional module docstring
 
-    m.def("reset", &reset, "Function which resets the chess environment");
-}
+//     m.def("reset", &reset, "Function which resets the chess environment");
+// }
