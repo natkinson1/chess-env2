@@ -1,5 +1,10 @@
+#include <iostream>
+
 #include "board.h"
 #include "move_tables.h"
+#include <pybind11/pybind11.h>
+
+namespace py = pybind11;
 
 std::vector<std::vector<int>> state(119, std::vector<int>(64, 0));
 // U64 bitboards[12];
@@ -15,6 +20,7 @@ void Board::print_board() {
     printf("\n");
     for (int rank = 0; rank < 8; rank++) {
         printf(" %d|", 8 - rank);
+        py::print(" ", 8 - rank, "|", py::arg("end") = "");
         for (int file = 0; file < 8; file++) {
             int square = rank * 8 + file;
 
@@ -26,19 +32,27 @@ void Board::print_board() {
             }
 
             printf("  %c", (piece == -1) ? '.' : ascii_pieces[piece]);
+            if (piece == -1) {
+                py::print("  .", py::arg("end") = "");
+            } else {
+                py::print(" ", ascii_pieces[piece], py::arg("end") = "");
+            }
         }
         printf("\n");
+        py::print("\n");
     }
     printf("   ------------------------");
     printf("\n");
     printf("     a  b  c  d  e  f  g  h");
     printf("\n\n");
-    printf("this->side:       %s\n", !this->side ? "white" : "black");
+    printf("side:       %s\n", !this->side ? "white" : "black");
     printf("enpassant:  %s\n", (this->enpassant != no_sq) ? square_to_coord[this->enpassant] : "NA");
     printf("Castling:   %c%c%c%c\n\n\n", (this->castle & wk) ? 'K' : '-', 
                                      (this->castle & wq) ? 'Q' : '-', 
                                      (this->castle & bk) ? 'k' : '-', 
                                      (this->castle & bq) ? 'q' : '-');
+    py::print("      ------------------------");
+    py::print("       a  b  c  d  e  f  g  h");
 
 }
 
