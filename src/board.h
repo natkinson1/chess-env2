@@ -63,4 +63,33 @@ void update_state();
 std::vector<std::vector<int>> get_ordered_state();
 std::vector<std::vector<int>> reset();
 
+class Board {
+private:
+    int total_move_count;
+    int current_state_pos = 0;
+    int no_progress_count = 0;
+    int castle;
+    int enpassant;
+    int side;
+    U64 bitboards[12];
+    U64 occupancies[3];
+    std::unordered_map<U64, int> repetition_count;
+    inline int is_square_attacked(int square, int side);
+    inline int make_move(int move, int move_flag);
+    inline void generate_moves(moves *move_list);
+    U64 hash_game_state();
+    void update_repition_count(U64 board_hash);
+    int get_repitition_count(U64 board_hash);
+    std::tuple<int, int> get_move_direction_and_distance(int source_square, int target_square);
+    int get_knight_move_direction(int source_square, int target_square);
+    std::vector<std::vector<int>> encode_board();
+    void update_state();
+    std::vector<std::vector<int>> get_ordered_state();
+public:
+    void print_board();
+    void parse_fen(const char *fen);
+    std::vector<std::vector<int>> reset();
+    std::vector<std::vector<int>> get_legal_moves();
+};
+
 #endif

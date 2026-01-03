@@ -3,3 +3,5 @@
 *.exe
 build/
 pybind11/
+chess_env.egg-info/
+*.ipynb
