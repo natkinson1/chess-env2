@@ -19,6 +19,7 @@ ext_modules = [
         ["src/main.cpp", "src/board.cpp", "src/definitions.cpp", "src/move_tables.cpp"],
         # Example: passing in the version to the compiled code
         define_macros=[("VERSION_INFO", __version__)],
+        extra_link_args=['/DEBUG']
     ),
 ]
 

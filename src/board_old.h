@@ -9,7 +9,6 @@
 #include <cmath>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
-
 #include "move_tables.h"
 
 namespace py = pybind11;
@@ -25,40 +24,32 @@ namespace py = pybind11;
 #define get_move_enpassant(move) (move & 0x400000)
 #define get_move_castling(move) (move & 0x800000)
 
-// #define copy_board()\
-//     U64 bitboards_copy[12], occupancies_copy[3]; \
-//     int side_copy, enpassant_copy, castle_copy; \
-//     memcpy(bitboards_copy, bitboards, 96); \
-//     memcpy(occupancies_copy, occupancies, 24); \
-//     side_copy = side, enpassant_copy = enpassant, castle_copy = castle; \
+#define copy_board()\
+    U64 bitboards_copy[12], occupancies_copy[3]; \
+    int side_copy, enpassant_copy, castle_copy; \
+    memcpy(bitboards_copy, bitboards, 96); \
+    memcpy(occupancies_copy, occupancies, 24); \
+    side_copy = side, enpassant_copy = enpassant, castle_copy = castle; \
 
-// #define take_back() \
-//     memcpy(bitboards, bitboards_copy, 96); \
-//     memcpy(occupancies, occupancies_copy, 24); \
-//     side = side_copy, enpassant = enpassant_copy, castle = castle_copy; \
+#define take_back() \
+    memcpy(bitboards, bitboards_copy, 96); \
+    memcpy(occupancies, occupancies_copy, 24); \
+    side = side_copy, enpassant = enpassant_copy, castle = castle_copy; \
 
 typedef struct {
     int moves[256];
     int count;
 } moves;
 
-// extern U64 bitboards[12];
-// extern U64 occupancies[3];
-// extern int side;
-// extern int enpassant;
-// extern int castle;
-// extern int no_progress_count;
-// extern int current_state_pos;
-// extern int total_move_count;
-// extern std::unordered_map<U64, int> repetition_count;
-
-static U64 pawn_attacks[2][64];
-static U64 knight_attacks[64];
-static U64 king_attacks[64];
-static U64 bishop_masks[64];
-static U64 rook_masks[64];
-static U64 bishop_attacks[64][512];
-static U64 rook_attacks[64][4096];
+extern U64 bitboards[12];
+extern U64 occupancies[3];
+extern int side;
+extern int enpassant;
+extern int castle;
+extern int no_progress_count;
+extern int current_state_pos;
+extern int total_move_count;
+extern std::unordered_map<U64, int> repetition_count;
 
 static inline void add_move(moves  *move_list, int move);
 
@@ -72,18 +63,10 @@ private:
     int side;
     U64 bitboards[12];
     U64 occupancies[3];
-    int castle_copy;
-    int enpassant_copy;
-    int side_copy;
-    U64 bitboards_copy[12];
-    U64 occupancies_copy[3];
     std::unordered_map<U64, int> repetition_count;
     std::unordered_map<int, int> move_index;
     int n_repititions;
     std::vector<std::vector<int>> state;
-    void init_leaper_attacks();
-    void init_sliders_attacks(int bishop);
-    void init_all();
     inline int is_square_attacked(int square, int side);
     inline int make_move(int move, int move_flag);
     inline void generate_moves(moves *move_list);
@@ -95,26 +78,7 @@ private:
     std::vector<std::vector<int>> encode_board(int player);
     void update_state(int player);
     std::vector<std::vector<int>> get_ordered_state();
-    inline void copy_board() {
-        memcpy(this->bitboards_copy, this->bitboards, 96);
-        memcpy(this->occupancies_copy, this->occupancies, 24);
-        this->side_copy = this->side;
-        this->enpassant_copy = this->enpassant;
-        this->castle_copy = this->castle;
-    }
-    
-    inline void take_back() {
-        memcpy(this->bitboards, this->bitboards_copy, 96);
-        memcpy(this->occupancies, this->occupancies_copy, 24);
-        this->side = this->side_copy;
-        this->enpassant = this->enpassant_copy;
-        this->castle = this->castle_copy;
-    }
-
 public:
-    Board() {
-        init_all();
-    }
     void print_board();
     void parse_fen(const char *fen);
     py::tuple reset();

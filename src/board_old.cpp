@@ -3,11 +3,19 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
-#include "board.h"
+#include "board_old.h"
 #include "move_tables.h"
 
 
 namespace py = pybind11;
+// U64 bitboards[12];
+// U64 occupancies[3];
+// int side = -1;
+// int enpassant = no_sq;
+// int castle;
+// int no_progress_count = 0;
+// int current_state_pos = 0;
+// int total_move_count = 0;
 
 void Board::print_board() {
     printf("\n");
@@ -141,48 +149,6 @@ void Board::parse_fen(const char *fen) {
 
 };
 
-void Board::init_leaper_attacks() {
-
-    for (int square = 0; square < 64; square++) {
-        pawn_attacks[white][square] = mask_pawn_attacks(square, white);
-        pawn_attacks[black][square] = mask_pawn_attacks(square, black);
-
-        knight_attacks[square] = mask_knight_attacks(square);
-
-        king_attacks[square] = mask_king_attacks(square);
-    }
-};
-
-void Board::init_sliders_attacks(int bishop) {
-    for (int square = 0; square < 64; square++) {
-        bishop_masks[square] = mask_bishop_attacks(square);
-        rook_masks[square] = mask_rook_attacks(square);
-
-        U64 attack_mask = bishop ? bishop_masks[square] : rook_masks[square];
-        int relevant_bits_count = count_bits(attack_mask);
-        int occupancy_indicies = (1 << relevant_bits_count);
-
-        for (int index = 0; index < occupancy_indicies; index++) {
-            if (bishop) {
-                U64 occupancy = set_occupancy(index, relevant_bits_count, attack_mask);
-                int magic_index = (occupancy * bishop_magic_numbers[square]) >> (64 - bishop_relevant_bits[square]);
-                bishop_attacks[square][magic_index] = bishop_attacks_on_fly(square, occupancy);
-            } else {
-                U64 occupancy = set_occupancy(index, relevant_bits_count, attack_mask);
-                int magic_index = (occupancy * rook_magic_numbers[square]) >> (64 - rook_relevant_bits[square]);
-                rook_attacks[square][magic_index] = rook_attacks_on_fly(square, occupancy);
-            }
-        }
-    }
-}
-
-void Board::init_all() {
-    init_leaper_attacks();
-    init_sliders_attacks(bishop);
-    init_sliders_attacks(rook);
-    // init_magic_numbers();
-}
-
 inline int Board::is_square_attacked(int square, int side) {
 
     if ((side == white) && (pawn_attacks[black][square] & this->bitboards[P])) {
@@ -222,7 +188,7 @@ static inline void add_move(moves  *move_list, int move) {
 inline int Board::make_move(int move, int move_flag) {
 
     if (move_flag == all_moves) {
-        this->copy_board();
+        copy_board();
 
         int source_square = get_move_source(move);
         int target_square = get_move_target(move);
@@ -320,7 +286,7 @@ inline int Board::make_move(int move, int move_flag) {
         if (is_square_attacked((this->side == white ? get_ls1b_index(this->bitboards[k]) : get_ls1b_index(this->bitboards[K])), this->side)) {
             // move is illegal
             this->no_progress_count--;
-            this->take_back();
+            take_back();
             return 0;
         } else {
             return 1;
@@ -793,7 +759,7 @@ std::vector<std::vector<int>> Board::get_legal_moves() {
 
     generate_moves(move_list);
     for (int move_count = 0; move_count < move_list->count; move_count++) {
-        this->copy_board();
+        copy_board();
         int move = move_list->moves[move_count];
         if(!this->make_move(move, all_moves)) {
             continue;
@@ -834,7 +800,7 @@ std::vector<std::vector<int>> Board::get_legal_moves() {
                 this->move_index[(layer * 64) + source_square] = move;
             }
         }
-        this->take_back();
+        take_back();
     }
     return actions;
 }
@@ -856,13 +822,13 @@ py::tuple Board::step(int action_idx) {
     int has_moves = 0;
     generate_moves(move_list);
     for (int move_count = 0; move_count < move_list->count; move_count++) {
-        this->copy_board();
+        copy_board();
         int move = move_list->moves[move_count];
         if(!this->make_move(move, all_moves)) {
             continue;
         } else {
             has_moves = 1;
-            this->take_back();
+            take_back();
             break;
         }
     }
