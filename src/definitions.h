@@ -11,7 +11,7 @@
 enum { white, black, both };
 enum { rook, bishop };
 enum { all_moves, only_captures };
-enum { north, north_east, east, south_east, south, south_west, west, north_west};
+enum { north_west, north, north_east, east, south_east, south, south_west, west};
 enum {knight_nw, knight_ne, knight_en, knight_es, knight_se, knight_sw, knight_ws, knight_wn };
 
 int char_to_piece(char c);

@@ -7,14 +7,11 @@
 #include <tuple>
 #include <cstdio>
 #include <cmath>
-#include <pybind11/pybind11.h>
-#include <pybind11/stl.h>
 
-#include "move_tables.h"
-
-namespace py = pybind11;
+#include "definitions.h"
 
 #define start_position "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1 "
+#define tricky_position "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1 "
 
 #define get_move_source(move) (move & 0x3f)
 #define get_move_target(move) ((move & 0xfc0) >> 6)
@@ -25,22 +22,18 @@ namespace py = pybind11;
 #define get_move_enpassant(move) (move & 0x400000)
 #define get_move_castling(move) (move & 0x800000)
 
-// #define copy_board()\
-//     U64 bitboards_copy[12], occupancies_copy[3]; \
-//     int side_copy, enpassant_copy, castle_copy; \
-//     memcpy(bitboards_copy, bitboards, 96); \
-//     memcpy(occupancies_copy, occupancies, 24); \
-//     side_copy = side, enpassant_copy = enpassant, castle_copy = castle; \
-
-// #define take_back() \
-//     memcpy(bitboards, bitboards_copy, 96); \
-//     memcpy(occupancies, occupancies_copy, 24); \
-//     side = side_copy, enpassant = enpassant_copy, castle = castle_copy; \
-
 typedef struct {
     int moves[256];
     int count;
 } moves;
+
+struct State {
+    U64 bitboards[12];
+    U64 occupancies[3];
+    int side;
+    int enpassant;
+    int castle;
+};
 
 // extern U64 bitboards[12];
 // extern U64 occupancies[3];
@@ -59,6 +52,25 @@ static U64 bishop_masks[64];
 static U64 rook_masks[64];
 static U64 bishop_attacks[64][512];
 static U64 rook_attacks[64][4096];
+U64 get_bishop_attacks(int square, U64 occupancy);
+U64 get_rook_attacks(int square, U64 occupancy);
+U64 get_queen_attacks(int square, U64 occupancy);
+U64 set_occupancy(int index, int bits_in_mask, U64 attack_mask);
+U64 mask_pawn_attacks(int square, int side);
+U64 mask_knight_attacks(int square);
+U64 mask_king_attacks(int square);
+U64 mask_bishop_attacks(int square);
+U64 mask_rook_attacks(int square);
+U64 bishop_attacks_on_fly(int square, U64 block);
+U64 rook_attacks_on_fly(int square, U64 block);
+void init_leaper_attacks();
+unsigned int get_random_U32_number();
+U64 get_random_U64_number();
+U64 generate_magic_number();
+U64 find_magic_number(int square, int relevant_bits, int bishop);
+void init_magic_numbers();
+void init_sliders_attacks(int bishop);
+void init_all();
 
 static inline void add_move(moves  *move_list, int move);
 
@@ -83,7 +95,6 @@ private:
     std::vector<std::vector<int>> state;
     void init_leaper_attacks();
     void init_sliders_attacks(int bishop);
-    void init_all();
     inline int is_square_attacked(int square, int side);
     inline int make_move(int move, int move_flag);
     inline void generate_moves(moves *move_list);
@@ -114,12 +125,33 @@ private:
 public:
     Board() {
         init_all();
+        memset(this->occupancies, 0ULL, 24);
+        memset(this->bitboards, 0ULL, 96);
     }
     void print_board();
     void parse_fen(const char *fen);
-    py::tuple reset();
+    std::tuple<std::vector<std::vector<int>>, int, int> reset();
     std::vector<std::vector<int>> get_legal_moves();
-    py::tuple step(int action_idx);
+    std::tuple<std::vector<std::vector<int>>, int, int> step(int action_idx);
+    State save_state() {
+        State state;
+        memcpy(state.bitboards, this->bitboards, 96);
+        memcpy(state.occupancies, this->occupancies, 24);
+        state.side = this->side;
+        state.enpassant = this->enpassant;
+        state.castle = this->castle;
+
+        return state;
+    }
+    
+    inline void restore_state(State state) {
+        memcpy(this->bitboards, state.bitboards, 96);
+        memcpy(this->occupancies, state.occupancies, 24);
+        this->side = state.side;
+        this->enpassant = state.enpassant;
+        this->castle = state.castle;
+    }
 };
+
 
 #endif

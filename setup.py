@@ -16,10 +16,13 @@ __version__ = "0.0.1"
 ext_modules = [
     Pybind11Extension(
         "chess_env",
-        ["src/main.cpp", "src/board.cpp", "src/definitions.cpp", "src/move_tables.cpp"],
+        [
+            "src/main.cpp", 
+            "src/board.cpp", 
+            "src/definitions.cpp",
+        ],
         # Example: passing in the version to the compiled code
         define_macros=[("VERSION_INFO", __version__)],
-        extra_link_args=['/DEBUG']
     ),
 ]
 
