@@ -3,6 +3,9 @@
 *.exe
 build/
 pybind11/
-chess_env.egg-info/
+chess_env*.egg-info/
 *.ipynb
 src/debug.cpp
+dist/
+.pypirc
+.env
