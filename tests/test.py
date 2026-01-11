@@ -1,4 +1,4 @@
-import chess_env
+import chess_env_rl as chess_env
 import numpy as np
 
 env = chess_env.ChessEnv()
