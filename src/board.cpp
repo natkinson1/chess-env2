@@ -607,7 +607,7 @@ void Board::update_repition_count(U64 board_hash) {
 };
 
 int Board::get_repitition_count(U64 board_hash) {
-    return this->repetition_count[board_hash];
+    return this->repetition_count[board_hash] - 1;
 }
 
 std::tuple<int, int> Board::get_move_direction_and_distance(int source_square, int target_square) {
@@ -671,8 +671,6 @@ int Board::get_knight_move_direction(int source_square, int target_square) {
 }
 
 std::vector<std::vector<int>> rotate180(std::vector<std::vector<int>> board) {
-    // Reverse the order of rows
-    std::reverse(board.begin(), board.end());
     
     // Reverse each row
     for (auto& row : board) {
@@ -682,7 +680,7 @@ std::vector<std::vector<int>> rotate180(std::vector<std::vector<int>> board) {
     return board;
 }
 
-std::vector<std::vector<int>> Board::encode_board(int player) {
+void Board::encode_board(int player) {
     std::vector<std::vector<int>> new_state(7, std::vector<int>(64, 0));
 
     U64 board_hash = hash_game_state();
@@ -707,37 +705,32 @@ std::vector<std::vector<int>> Board::encode_board(int player) {
     this->n_repititions = repitition_count;
     new_state[6] = std::vector<int>(64, repitition_count);
 
-    if (player == black) {
-        new_state = rotate180(new_state);
-    }
-
-    return new_state;
-}
-
-void Board::update_state(int player) {
-    std::vector<std::vector<int>> new_state = encode_board(player);
-    
-    // Write directly to circular buffer position
-    int write_plane = this->current_state_pos * 7;
-    for (int i = 0; i < 7; i++) {
-        this->state[write_plane + i] = new_state[i];
-    }
-    
-    // Advance position
     this->current_state_pos = (this->current_state_pos + 1) % 16;
+    if (this->state_history.size() >= 16) {
+        this->state_history[this->current_state_pos] = new_state;
+    } else {
+        this->state_history.push_back(new_state);
+    }
+    
 }
 
 std::vector<std::vector<int>> Board::get_ordered_state() {
     std::vector<std::vector<int>> ordered(119, std::vector<int>(64, 0));
-    
-    for (int t = 0; t < 16; t++) {
-        int read_pos = (this->current_state_pos - 1 - t + 16) % 16;
-        
-        int src_plane = read_pos * 7;
+
+    for (int t = 0; t < 16; t=t+2) {
+        int read_pos = (this->current_state_pos - t - 2 + 16) % 16;
+        int next_read_pos = (read_pos + 1) % 16;
+
         int dst_plane = t * 7;
-        
+        int next_dst_plane = (t + 1) * 7;
+
         for (int i = 0; i < 7; i++) {
-            ordered[dst_plane + i] = this->state[src_plane + i];
+            if (read_pos < this->state_history.size()) {
+                ordered[dst_plane + i] = this->state_history[read_pos][i];
+            }
+            if (next_read_pos < this->state_history.size()) {
+                ordered[next_dst_plane + i] = this->state_history[next_read_pos][i];
+            }
         }
     }
     (this->side == white) ? ordered[112] = std::vector<int>(64, white) : ordered[112] = std::vector<int>(64, black);
@@ -747,17 +740,24 @@ std::vector<std::vector<int>> Board::get_ordered_state() {
     (this->castle & bk) ? ordered[116] = std::vector<int>(64, 1) : ordered[116] = std::vector<int>(64, 0);
     (this->castle & bq) ? ordered[117] = std::vector<int>(64, 1) : ordered[117] = std::vector<int>(64, 0);
     ordered[118] = std::vector<int>(64, this->no_progress_count);
+
+    if (this->side == black && !this->has_restarted) {
+        ordered = rotate180(ordered);
+    }
     
     return ordered;
 }
 
 std::tuple<std::vector<std::vector<int>>, int, int> Board::reset() {
-    this->state = std::vector<std::vector<int>>(119, std::vector<int>(64, 0));
+    this->has_restarted = 1;
+    this->state_history.clear();
+    this->repetition_count.clear();
     this->current_state_pos = 0;
     parse_fen(start_position);
-    update_state(white); //white position
-    update_state(black); // black position
+    encode_board(white); //white position
+    encode_board(black); // black position
     std::vector<std::vector<int>> output_state = get_ordered_state();
+    output_state[13] = std::vector<int>(64, 0); 
     return {output_state, 0, 0}; // state, reward, terminal
 }
 
@@ -824,6 +824,7 @@ std::vector<std::vector<int>> Board::get_legal_moves() {
 }
 
 std::tuple<std::vector<std::vector<int>>, int, int> Board::step(int action_idx) {
+    this->has_restarted = 0;
     int reward = 0;
     int terminal = 0;
 
@@ -832,7 +833,8 @@ std::tuple<std::vector<std::vector<int>>, int, int> Board::step(int action_idx) 
         throw std::invalid_argument("Invalid action");
     }
     this->make_move(this->move_index[action_idx], all_moves);
-    update_state((this->side == white) ? black : white);
+    encode_board((this->side == white) ? black : white);
+    this->total_move_count++;
     std::vector<std::vector<int>> state = this->get_ordered_state();
     moves move_list[1];
 
@@ -858,7 +860,7 @@ std::tuple<std::vector<std::vector<int>>, int, int> Board::step(int action_idx) 
     } else if (!in_check && !has_moves) {
         reward = 2;
         terminal = 1;
-    } else if (this->n_repititions == 3) {
+    } else if (this->n_repititions == 2) {
         reward = 3;
         terminal = 1;
     } else if (this->no_progress_count >= 50) {

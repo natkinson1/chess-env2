@@ -2,6 +2,7 @@
 #define BOARD_H
 
 #include <vector>
+#include <array>
 #include <unordered_map>
 #include <string.h>
 #include <tuple>
@@ -35,16 +36,6 @@ struct State {
     int castle;
 };
 
-// extern U64 bitboards[12];
-// extern U64 occupancies[3];
-// extern int side;
-// extern int enpassant;
-// extern int castle;
-// extern int no_progress_count;
-// extern int current_state_pos;
-// extern int total_move_count;
-// extern std::unordered_map<U64, int> repetition_count;
-
 static U64 pawn_attacks[2][64];
 static U64 knight_attacks[64];
 static U64 king_attacks[64];
@@ -76,9 +67,10 @@ static inline void add_move(moves  *move_list, int move);
 
 class Board {
 private:
-    int total_move_count;
+    int total_move_count = 0;
     int current_state_pos = 0;
     int no_progress_count = 0;
+    int has_restarted = 0;
     int castle;
     int enpassant;
     int side;
@@ -93,6 +85,7 @@ private:
     std::unordered_map<int, int> move_index;
     int n_repititions;
     std::vector<std::vector<int>> state;
+    std::vector<std::vector<std::vector<int>>> state_history;
     void init_leaper_attacks();
     void init_sliders_attacks(int bishop);
     inline int is_square_attacked(int square, int side);
@@ -103,7 +96,7 @@ private:
     int get_repitition_count(U64 board_hash);
     std::tuple<int, int> get_move_direction_and_distance(int source_square, int target_square);
     int get_knight_move_direction(int source_square, int target_square);
-    std::vector<std::vector<int>> encode_board(int player);
+    void encode_board(int player);
     void update_state(int player);
     std::vector<std::vector<int>> get_ordered_state();
     inline void copy_board() {
@@ -127,6 +120,7 @@ public:
         init_all();
         memset(this->occupancies, 0ULL, 24);
         memset(this->bitboards, 0ULL, 96);
+        this->state_history.reserve(16);
     }
     void print_board();
     void parse_fen(const char *fen);
