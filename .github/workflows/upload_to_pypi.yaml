@@ -63,7 +63,8 @@ jobs:
     - name: Download all dists
       uses: actions/download-artifact@v6
       with:
-        name: python-package-distributions
+        pattern: cibw-*
         path: dist/
+        merge-multiple: true
     - name: Publish distribution to pypi
       uses: pypa/gh-action-pypi-publish@release/v1
