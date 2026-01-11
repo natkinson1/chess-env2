@@ -7,28 +7,51 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          persist_credentials: false
+  # build:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v6
+  #       with:
+  #         persist_credentials: false
         
-      - name: Set up python
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.13"
-      - name: Install pypa/build
-        run: python -m pip install build --user
-      - name: Build the package .whl .tar.gz
-        run: python3 -m build
+  #     - name: Set up python
+  #       uses: actions/setup-python@v6
+  #       with:
+  #         python-version: "3.13"
+  #     - name: Install pypa/build
+  #       run: python -m pip install build --user
+  #     - name: Build the package .whl .tar.gz
+  #       run: python3 -m build
+  #     - name: Store distribution packages
+  #       uses: actions/upload-artifact@v5
+  #       with: 
+  #         name: python-package-distributions
+  #         path: dist/
+  build_wheels:
+    name: Build wheels on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, ubuntu-24.04-arm, windows-latest, windows-11-arm, macos-15-intel, macos-latest]
+
+    steps:
+      - uses: actions/checkout@v5
+
+      # Used to host cibuildwheel
+      - uses: actions/setup-python@v5
+
+      - name: Install cibuildwheel
+        run: python -m pip install cibuildwheel==3.3.1
+
+      - name: Build wheels
+        run: python -m cibuildwheel --output-dir wheelhouse
       - name: Store distribution packages
-        uses: actions/upload-artifact@v5
-        with: 
-          name: python-package-distributions
-          path: dist/
+        uses: actions/upload-artifact@v4
+        with:
+          name: cibw-wheels-${{ matrix.os }}-${{ strategy.job-index }}
+          path: ./wheelhouse/*.whl
   publish-to-pypi:
-    needs: ["build"]
+    needs: ["build_wheels"]
     runs-on: ubuntu-latest
     environment:
       name: pypi
@@ -43,5 +66,3 @@ jobs:
         path: dist/
     - name: Publish distribution to pypi
       uses: pypa/gh-action-pypi-publish@release/v1
-
-        
