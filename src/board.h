@@ -14,6 +14,7 @@
 #define start_position "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1 "
 #define tricky_position "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1 "
 
+
 #define get_move_source(move) (move & 0x3f)
 #define get_move_target(move) ((move & 0xfc0) >> 6)
 #define get_move_piece(move) ((move & 0xf000) >> 12)
@@ -84,6 +85,7 @@ private:
     std::unordered_map<U64, int> repetition_count;
     std::unordered_map<int, int> move_index;
     int n_repititions;
+    int prev_n_repititions = 0;
     std::vector<std::vector<int>> state;
     std::vector<std::vector<std::vector<int>>> state_history;
     void init_leaper_attacks();
@@ -96,8 +98,8 @@ private:
     int get_repitition_count(U64 board_hash);
     std::tuple<int, int> get_move_direction_and_distance(int source_square, int target_square);
     int get_knight_move_direction(int source_square, int target_square);
-    void encode_board(int player);
-    void update_state(int player);
+    void encode_board();
+    void update_state();
     std::vector<std::vector<int>> get_ordered_state();
     inline void copy_board() {
         memcpy(this->bitboards_copy, this->bitboards, 96);
