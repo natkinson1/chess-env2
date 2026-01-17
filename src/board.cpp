@@ -22,7 +22,6 @@ void Board::print_board() {
                     piece = bb_piece;
                 }
             }
-
             printf("  %c", (piece == -1) ? '.' : ascii_pieces[piece]);
             if (piece == -1) {
                 py::print("   .", py::arg("end") = "");
@@ -680,59 +679,82 @@ std::vector<std::vector<int>> rotate180(std::vector<std::vector<int>> board) {
     return board;
 }
 
-void Board::encode_board(int player) {
-    std::vector<std::vector<int>> new_state(7, std::vector<int>(64, 0));
+void Board::encode_board() {
+    std::vector<std::vector<int>> new_state(14, std::vector<int>(64, 0));
 
     U64 board_hash = hash_game_state();
     update_repition_count(board_hash);
 
-
-    int start_piece = (player == white) ? P : p;
-    int end_piece = (player == white) ? K : k;
-    
-
-    for (int piece = start_piece; piece <= end_piece; piece++) {
+    for (int piece = P; piece <= k; piece++) {
         U64 bb = this->bitboards[piece];
         while (bb) {
             // int sq = __builtin_ctzll(bb);
             // int sq = ctzll(bb);
             int sq = get_ls1b_index(bb);
-            new_state[piece - start_piece][sq] = 1;
+            // new_state[piece - start_piece][sq] = 1;
+            new_state[piece][sq] = 1;
             bb &= bb - 1;
         }
     }
     int repitition_count = get_repitition_count(board_hash);
     this->n_repititions = repitition_count;
-    new_state[6] = std::vector<int>(64, repitition_count);
+    new_state[12] = std::vector<int>(64, (this->side == white) ? repitition_count : this->prev_n_repititions); // white repitition layer
+    new_state[13] = std::vector<int>(64, (this->side == black) ? repitition_count : this->prev_n_repititions); // black repitition layer
 
-    this->current_state_pos = (this->current_state_pos + 1) % 16;
-    if (this->state_history.size() >= 16) {
+    this->current_state_pos = (this->current_state_pos + 1) % 8;
+    if (this->state_history.size() >= 8) {
         this->state_history[this->current_state_pos] = new_state;
     } else {
         this->state_history.push_back(new_state);
     }
+    this->prev_n_repititions = repitition_count;
     
 }
 
 std::vector<std::vector<int>> Board::get_ordered_state() {
     std::vector<std::vector<int>> ordered(119, std::vector<int>(64, 0));
-
-    for (int t = 0; t < 16; t=t+2) {
-        int read_pos = (this->current_state_pos - t - 2 + 16) % 16;
-        int next_read_pos = (read_pos + 1) % 16;
-
-        int dst_plane = t * 7;
-        int next_dst_plane = (t + 1) * 7;
-
-        for (int i = 0; i < 7; i++) {
+    for (int t = 0; t < 8; t++) {
+        int read_pos = (this->current_state_pos - t - 1 + 8) % 8;
+        int dst_plane = t * 14;
+        if (this->side == white) {
             if (read_pos < this->state_history.size()) {
-                ordered[dst_plane + i] = this->state_history[read_pos][i];
+                for (int piece = P; piece <= k; piece++) {
+                    ordered[dst_plane + piece] = this->state_history[read_pos][piece];
+                }
+                // repitition layers
+                ordered[dst_plane + k + 1] = this->state_history[read_pos][k + 1];
+                ordered[dst_plane + k + 2] = this->state_history[read_pos][k + 2];
             }
-            if (next_read_pos < this->state_history.size()) {
-                ordered[next_dst_plane + i] = this->state_history[next_read_pos][i];
+            
+        } else {
+            if (read_pos < this->state_history.size()) {
+                for (int piece = p; piece <= k; piece++){
+                    ordered[dst_plane + piece - p] = this->state_history[read_pos][piece];
+                }
+                for (int piece = P; piece <= K; piece++){
+                    ordered[dst_plane + piece + p] = this->state_history[read_pos][piece];
+                }
+                ordered[dst_plane + k + 2] = this->state_history[read_pos][k + 2];
+                ordered[dst_plane + k + 1] = this->state_history[read_pos][k + 1];
             }
         }
     }
+    // for (int t = 0; t < 16; t=t+2) {
+    //     int read_pos = (this->current_state_pos - t - 2 + 16) % 16;
+    //     int next_read_pos = (read_pos + 1) % 16;
+
+    //     int dst_plane = t * 7;
+    //     int next_dst_plane = (t + 1) * 7;
+
+    //     for (int i = 0; i < 7; i++) {
+    //         if (read_pos < this->state_history.size()) {
+    //             ordered[dst_plane + i] = this->state_history[read_pos][i];
+    //         }
+    //         if (next_read_pos < this->state_history.size()) {
+    //             ordered[next_dst_plane + i] = this->state_history[next_read_pos][i];
+    //         }
+    //     }
+    // }
     (this->side == white) ? ordered[112] = std::vector<int>(64, white) : ordered[112] = std::vector<int>(64, black);
     ordered[113] = std::vector<int>(64, this->total_move_count);
     (this->castle & wk) ? ordered[114] = std::vector<int>(64, 1) : ordered[114] = std::vector<int>(64, 0);
@@ -754,10 +776,8 @@ std::tuple<std::vector<std::vector<int>>, int, int> Board::reset() {
     this->repetition_count.clear();
     this->current_state_pos = 0;
     parse_fen(start_position);
-    encode_board(white); //white position
-    encode_board(black); // black position
+    encode_board(); //white position
     std::vector<std::vector<int>> output_state = get_ordered_state();
-    output_state[13] = std::vector<int>(64, 0); 
     return {output_state, 0, 0}; // state, reward, terminal
 }
 
@@ -833,7 +853,7 @@ std::tuple<std::vector<std::vector<int>>, int, int> Board::step(int action_idx) 
         throw std::invalid_argument("Invalid action");
     }
     this->make_move(this->move_index[action_idx], all_moves);
-    encode_board((this->side == white) ? black : white);
+    encode_board();
     this->total_move_count++;
     std::vector<std::vector<int>> state = this->get_ordered_state();
     moves move_list[1];
@@ -858,13 +878,16 @@ std::tuple<std::vector<std::vector<int>>, int, int> Board::step(int action_idx) 
         (this->side == white) ? reward = -1 : reward = 1;
         terminal = 1;
     } else if (!in_check && !has_moves) {
-        reward = 2;
+        // stalemate
+        reward = 0;
         terminal = 1;
     } else if (this->n_repititions == 2) {
-        reward = 3;
+        // 3 fold repitition draw
+        reward = 0;
         terminal = 1;
     } else if (this->no_progress_count >= 50) {
-        reward = 4;
+        // 50 move draw
+        reward = 0;
         terminal = 1;
     }
 
