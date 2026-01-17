@@ -1,3 +1,5 @@
+![PyPI - Version](https://img.shields.io/pypi/v/chess-env-rl)
+
 # chess_env
 
 Python chess environment written in c++ to simulate chess games. Implementation uses bitboards, magic numbers, and precomputed attack tables for fast simulations of games.
