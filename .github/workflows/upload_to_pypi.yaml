@@ -3,30 +3,9 @@ name: "Run and deploy to yaml"
 on:
   push:
     branches: [ "master" ]
-  pull_request:
   workflow_dispatch:
 
 jobs:
-  # build:
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v6
-  #       with:
-  #         persist_credentials: false
-        
-  #     - name: Set up python
-  #       uses: actions/setup-python@v6
-  #       with:
-  #         python-version: "3.13"
-  #     - name: Install pypa/build
-  #       run: python -m pip install build --user
-  #     - name: Build the package .whl .tar.gz
-  #       run: python3 -m build
-  #     - name: Store distribution packages
-  #       uses: actions/upload-artifact@v5
-  #       with: 
-  #         name: python-package-distributions
-  #         path: dist/
   build_wheels:
     name: Build wheels on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}

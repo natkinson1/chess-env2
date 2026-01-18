@@ -770,7 +770,7 @@ std::vector<std::vector<int>> Board::get_ordered_state() {
     return ordered;
 }
 
-std::tuple<std::vector<std::vector<int>>, int, int> Board::reset() {
+std::tuple<int, std::vector<std::vector<int>>, int, int> Board::reset() {
     this->has_restarted = 1;
     this->state_history.clear();
     this->repetition_count.clear();
@@ -778,7 +778,7 @@ std::tuple<std::vector<std::vector<int>>, int, int> Board::reset() {
     parse_fen(start_position);
     encode_board(); //white position
     std::vector<std::vector<int>> output_state = get_ordered_state();
-    return {output_state, 0, 0}; // state, reward, terminal
+    return {this->side, output_state, 0, 0}; // state, reward, terminal
 }
 
 
@@ -843,7 +843,7 @@ std::vector<std::vector<int>> Board::get_legal_moves() {
     return actions;
 }
 
-std::tuple<std::vector<std::vector<int>>, int, int> Board::step(int action_idx) {
+std::tuple<int, std::vector<std::vector<int>>, int, int> Board::step(int action_idx) {
     this->has_restarted = 0;
     int reward = 0;
     int terminal = 0;
@@ -891,7 +891,7 @@ std::tuple<std::vector<std::vector<int>>, int, int> Board::step(int action_idx) 
         terminal = 1;
     }
 
-    return {state, reward, terminal};
+    return {this->side, state, reward, terminal};
 }
 
 unsigned int random_state = 1804289383;
