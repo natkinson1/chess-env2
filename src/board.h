@@ -93,7 +93,6 @@ private:
     inline int is_square_attacked(int square, int side);
     inline int make_move(int move, int move_flag);
     inline void generate_moves(moves *move_list);
-    U64 hash_game_state();
     void update_repition_count(U64 board_hash);
     int get_repitition_count(U64 board_hash);
     std::tuple<int, int> get_move_direction_and_distance(int source_square, int target_square);
@@ -126,9 +125,10 @@ public:
     }
     void print_board();
     void parse_fen(const char *fen);
-    std::tuple<std::vector<std::vector<int>>, int, int> reset();
+    std::tuple<int, std::vector<std::vector<int>>, int, int> reset();
     std::vector<std::vector<int>> get_legal_moves();
-    std::tuple<std::vector<std::vector<int>>, int, int> step(int action_idx);
+    std::tuple<int, std::vector<std::vector<int>>, int, int> step(int action_idx);
+    U64 hash_game_state();
     State save_state() {
         State state;
         memcpy(state.bitboards, this->bitboards, 96);

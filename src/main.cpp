@@ -17,5 +17,6 @@ PYBIND11_MODULE(chess_env_rl, m, py::mod_gil_not_used()) {
         .def("parse_fen", &Board::parse_fen)
         .def("step", &Board::step)
         .def("save_state", &Board::save_state)
-        .def("restore_state", &Board::restore_state);
+        .def("restore_state", &Board::restore_state)
+        .def("hash_state", &Board::hash_game_state);
 }

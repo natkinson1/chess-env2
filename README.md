@@ -24,13 +24,13 @@ import chess_env_rl as chess_env
 import numpy as np
 
 env = chess_env.ChessEnv()
-state, reward, terminal = env.reset()
+player, state, reward, terminal = env.reset()
 
 actions = env.get_actions()
 actions = np.array(actions).reshape(-1)
 indices = np.argwhere(actions == 1).flatten()
 random_action = np.random.choice(indices)
-state, reward, terminal = env.step(random_action)
+player, state, reward, terminal = env.step(random_action)
 env.render()
 ```
 
@@ -59,7 +59,7 @@ env.render()
 import chess_env
 
 env = chess_env.ChessEnv()
-state, reward, terminal = env.reset()
+player, state, reward, terminal = env.reset()
 
 %%timeit
 actions = env.get_actions()
