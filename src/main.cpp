@@ -15,12 +15,32 @@ PYBIND11_MODULE(chess_env_rl, m, py::mod_gil_not_used()) {
     .def_readonly("enpassant", &State::enpassant)
     .def_readonly("castle", &State::castle)
     .def_readwrite("state_history", &State::state_history)
+    .def_readwrite("state_pos", &State::state_pos)
+    .def_readwrite("total_move_count", &State::total_move_count)
+    .def_readwrite("no_progress_count", &State::no_progress_count)
+    .def_readwrite("repetition_count", &State::repetition_count)
+    .def_readwrite("n_repititions", &State::n_repititions)
+    .def_readwrite("prev_n_repititions", &State::prev_n_repititions)
     .def_property_readonly("bitboards", [](const State &s) {
         return py::array_t<U64>(12, s.bitboards);
     })
     .def_property_readonly("occupancies", [](const State &s) {
         return py::array_t<U64>(3, s.occupancies);
-    });
+    })
+    .def("__repr__", [](const State &s) {
+            std::ostringstream oss;
+            oss << "State(\n"
+                << "  side=" << s.side << ",\n"
+                << "  enpassant=" << s.enpassant << ",\n"
+                << "  castle=" << s.castle << ",\n"
+                << "  state_pos=" << s.state_pos << ",\n"
+                << "  total_move_count=" << s.total_move_count << ",\n"
+                << "  no_progress_count=" << s.no_progress_count << ",\n"
+                << "  n_repititions=" << s.n_repititions << ",\n"
+                << "  state_history size=" << s.state_history.size() << "\n"
+                << ")";
+            return oss.str();
+        });
     py::class_<Board>(m, "ChessEnv")
         .def(py::init<>())
         .def("reset", &Board::reset)

@@ -894,6 +894,14 @@ std::tuple<int, std::vector<std::vector<int>>, int, int> Board::step(int action_
     return {this->side, state, reward, terminal};
 }
 
+/*
+int total_move_count;
+    int no_progress_count;
+    std::unordered_map<U64, int> repetition_count;
+    int n_repititions;
+    int prev_n_repititions;
+*/
+
 State Board::save_state() {
     State state;
     memcpy(state.bitboards, this->bitboards, 96);
@@ -903,6 +911,10 @@ State Board::save_state() {
     state.castle = this->castle;
     state.state_history = this->state_history;
     state.state_pos = this->current_state_pos;
+    state.no_progress_count = this->no_progress_count;
+    state.repetition_count = this->repetition_count;
+    state.n_repititions = this->n_repititions;
+    state.prev_n_repititions = this->prev_n_repititions;
 
     return state;
 }
@@ -915,6 +927,10 @@ std::tuple<int, std::vector<std::vector<int>>, int, int> Board::restore_state(St
     this->castle = state.castle;
     this->state_history = state.state_history;
     this->current_state_pos = state.state_pos;
+    this->no_progress_count = state.no_progress_count;
+    this->repetition_count = state.repetition_count;
+    this->n_repititions = state.n_repititions;
+    this->prev_n_repititions = state.prev_n_repititions;
 
     std::vector<std::vector<int>> output_state = get_ordered_state();
 

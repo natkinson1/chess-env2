@@ -38,6 +38,11 @@ struct State {
     int castle;
     std::vector<std::vector<std::vector<int>>> state_history;
     int state_pos;
+    int total_move_count;
+    int no_progress_count;
+    std::unordered_map<U64, int> repetition_count;
+    int n_repititions;
+    int prev_n_repititions;
 };
 
 static U64 pawn_attacks[2][64];
@@ -89,7 +94,6 @@ private:
     std::unordered_map<int, int> move_index;
     int n_repititions;
     int prev_n_repititions = 0;
-    std::vector<std::vector<int>> state;
     std::vector<std::vector<std::vector<int>>> state_history;
     void init_leaper_attacks();
     void init_sliders_attacks(int bishop);
