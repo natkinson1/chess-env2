@@ -8,6 +8,7 @@
 #include <tuple>
 #include <cstdio>
 #include <cmath>
+#include <random>
 
 #include "definitions.h"
 
@@ -128,6 +129,7 @@ public:
     std::tuple<int, std::vector<std::vector<int>>, int, int> reset();
     std::vector<std::vector<int>> get_legal_moves();
     std::tuple<int, std::vector<std::vector<int>>, int, int> step(int action_idx);
+    int roll_out();
     U64 hash_game_state();
     State save_state() {
         State state;

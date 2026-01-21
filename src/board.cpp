@@ -894,6 +894,39 @@ std::tuple<int, std::vector<std::vector<int>>, int, int> Board::step(int action_
     return {this->side, state, reward, terminal};
 }
 
+int Board::roll_out() {
+    std::random_device rd;
+    std::mt19937 gen(rd());
+
+    int terminal = 0;
+    int reward = 0;
+    int i = 0;
+
+    while (!terminal && i < 400) {
+        std::vector<std::vector<int>> actions = this->get_legal_moves();
+        std::vector<int> flat_actions;
+        for (const auto& row : actions) {
+            flat_actions.insert(flat_actions.end(), row.begin(), row.end());
+        }
+        std::vector<int> legal_indices;
+        for (int i = 0; i < flat_actions.size(); i++) {
+            if (flat_actions[i] == 1) {
+                legal_indices.push_back(i);
+            }
+        }
+        std::uniform_int_distribution<> dis(0, legal_indices.size() - 1);
+        int random_idx = dis(gen);
+        int action_idx = legal_indices[random_idx];
+
+        auto [p, s, r, t] = this->step(action_idx);
+        terminal = t;
+        reward = r;
+        i++;
+    }
+
+    return reward;
+}
+
 unsigned int random_state = 1804289383;
 
 U64 rook_magic_numbers[64] = {
