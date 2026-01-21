@@ -778,7 +778,7 @@ std::tuple<int, std::vector<std::vector<int>>, int, int> Board::reset() {
     parse_fen(start_position);
     encode_board(); //white position
     std::vector<std::vector<int>> output_state = get_ordered_state();
-    return {this->side, output_state, 0, 0}; // state, reward, terminal
+    return {this->side, output_state, 0, 0}; //player, state, reward, terminal
 }
 
 
@@ -892,6 +892,33 @@ std::tuple<int, std::vector<std::vector<int>>, int, int> Board::step(int action_
     }
 
     return {this->side, state, reward, terminal};
+}
+
+State Board::save_state() {
+    State state;
+    memcpy(state.bitboards, this->bitboards, 96);
+    memcpy(state.occupancies, this->occupancies, 24);
+    state.side = this->side;
+    state.enpassant = this->enpassant;
+    state.castle = this->castle;
+    state.state_history = this->state_history;
+    state.state_pos = this->current_state_pos;
+
+    return state;
+}
+
+std::tuple<int, std::vector<std::vector<int>>, int, int> Board::restore_state(State state) {
+    memcpy(this->bitboards, state.bitboards, 96);
+    memcpy(this->occupancies, state.occupancies, 24);
+    this->side = state.side;
+    this->enpassant = state.enpassant;
+    this->castle = state.castle;
+    this->state_history = state.state_history;
+    this->current_state_pos = state.state_pos;
+
+    std::vector<std::vector<int>> output_state = get_ordered_state();
+
+    return {this->side, output_state, 0, 0}; // player, state, reward, terminal
 }
 
 int Board::roll_out() {

@@ -14,6 +14,7 @@ PYBIND11_MODULE(chess_env_rl, m, py::mod_gil_not_used()) {
     .def_readonly("side", &State::side)
     .def_readonly("enpassant", &State::enpassant)
     .def_readonly("castle", &State::castle)
+    .def_readwrite("state_history", &State::state_history)
     .def_property_readonly("bitboards", [](const State &s) {
         return py::array_t<U64>(12, s.bitboards);
     })

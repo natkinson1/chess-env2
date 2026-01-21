@@ -36,6 +36,8 @@ struct State {
     int side;
     int enpassant;
     int castle;
+    std::vector<std::vector<std::vector<int>>> state_history;
+    int state_pos;
 };
 
 static U64 pawn_attacks[2][64];
@@ -131,24 +133,8 @@ public:
     std::tuple<int, std::vector<std::vector<int>>, int, int> step(int action_idx);
     int roll_out();
     U64 hash_game_state();
-    State save_state() {
-        State state;
-        memcpy(state.bitboards, this->bitboards, 96);
-        memcpy(state.occupancies, this->occupancies, 24);
-        state.side = this->side;
-        state.enpassant = this->enpassant;
-        state.castle = this->castle;
-
-        return state;
-    }
-    
-    inline void restore_state(State state) {
-        memcpy(this->bitboards, state.bitboards, 96);
-        memcpy(this->occupancies, state.occupancies, 24);
-        this->side = state.side;
-        this->enpassant = state.enpassant;
-        this->castle = state.castle;
-    }
+    State save_state();
+    std::tuple<int, std::vector<std::vector<int>>, int, int> restore_state(State state);
 };
 
 
