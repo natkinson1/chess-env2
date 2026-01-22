@@ -19,6 +19,7 @@ PYBIND11_MODULE(chess_env_rl, m, py::mod_gil_not_used()) {
     .def_readwrite("total_move_count", &State::total_move_count)
     .def_readwrite("no_progress_count", &State::no_progress_count)
     .def_readwrite("repetition_count", &State::repetition_count)
+    .def_readwrite("move_index", &State::move_index)
     .def_readwrite("n_repititions", &State::n_repititions)
     .def_readwrite("prev_n_repititions", &State::prev_n_repititions)
     .def_property_readonly("bitboards", [](const State &s) {

@@ -37,6 +37,7 @@ struct State {
     int enpassant;
     int castle;
     std::vector<std::vector<std::vector<int>>> state_history;
+    std::unordered_map<int, int> move_index;
     int state_pos;
     int total_move_count;
     int no_progress_count;

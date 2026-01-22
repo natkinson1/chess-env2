@@ -915,6 +915,7 @@ State Board::save_state() {
     state.repetition_count = this->repetition_count;
     state.n_repititions = this->n_repititions;
     state.prev_n_repititions = this->prev_n_repititions;
+    state.move_index = this->move_index;
 
     return state;
 }
@@ -931,6 +932,7 @@ std::tuple<int, std::vector<std::vector<int>>, int, int> Board::restore_state(St
     this->repetition_count = state.repetition_count;
     this->n_repititions = state.n_repititions;
     this->prev_n_repititions = state.prev_n_repititions;
+    this->move_index = state.move_index;
 
     std::vector<std::vector<int>> output_state = get_ordered_state();
 
