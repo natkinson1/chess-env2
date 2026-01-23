@@ -778,6 +778,7 @@ std::tuple<int, std::vector<std::vector<int>>, int, int> Board::reset() {
     parse_fen(start_position);
     encode_board(); //white position
     std::vector<std::vector<int>> output_state = get_ordered_state();
+    std::vector<std::vector<int>> _ = get_legal_moves(); // to populate this->move_index
     return {this->side, output_state, 0, 0}; //player, state, reward, terminal
 }
 
@@ -847,6 +848,7 @@ std::tuple<int, std::vector<std::vector<int>>, int, int> Board::step(int action_
     this->has_restarted = 0;
     int reward = 0;
     int terminal = 0;
+    std::vector<std::vector<int>> _ = get_legal_moves();
 
     auto it = this->move_index.find(action_idx);
     if (it == this->move_index.end()) {
